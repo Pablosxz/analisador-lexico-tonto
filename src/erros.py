@@ -2,7 +2,8 @@
 # Cada item: {'linha', 'coluna', 'lexema', 'contexto', 'sugestao'}
 ERROS = []
 
-# Caracteres que o TONTO admite dentro de um identificador. Utilizamos para reconstruir a palavra em volta do erro.
+# Caracteres que o TONTO admite dentro de um identificador, mais o hifen de
+# functional-complexes. Usados para reconstruir a palavra em volta do erro.
 _CARACTERES_DE_PALAVRA = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-'
 
 
@@ -23,10 +24,10 @@ def sugerir(caractere, palavra):
     # Cada retorno é uma sugestao compativel com a especificação da linguagem
     if caractere == '_':
         if palavra.startswith('_'):
-            return ("nomes nao podem comecar com sublinhado; o sublinhado deve "
-                    "ficar entre letras, como em Second_Baptist_Church")
+            return ("nome nao pode comecar com sublinhado; a convencao exige o "
+                    "sublinhado entre letras, como em Second_Baptist_Church")
         if palavra.endswith('_'):
-            return ("nomes nao podem terminar com sublinhado; remova-o ou "
+            return ("nome nao pode terminar com sublinhado; remova-o ou "
                     "acrescente ao menos uma letra depois dele")
         if '__' in palavra:
             return "sublinhado duplo nao e permitido; use um unico sublinhado entre letras"
@@ -35,11 +36,11 @@ def sugerir(caractere, palavra):
     if caractere == '.':
         return "ponto isolado nao e um token; TONTO usa '..' em cardinalidade, como em [1..*]"
 
-    # Hifen: só existe dentro de 'functional-complexes' e nos operadores de relação.
+    # Hifen: aceito como separador interno de nomes, mas sempre seguido de letra.
     if caractere == '-':
         if len(palavra) > 1:
-            return ("hifen em nome nao e permitido; a unica palavra da linguagem com "
-                    f"hifen e 'functional-complexes' - verifique a grafia de '{palavra}'")
+            return (f"'{palavra}': o hifen em um nome deve vir entre letras; "
+                    "verifique se nao ha hifen duplicado ou no fim do nome")
         return ("hifen isolado; os operadores de relacao validos sao '--', "
                 "'<>--', '--<>' e '<o>--'")
 
@@ -58,7 +59,8 @@ def sugerir(caractere, palavra):
 
     # Aspas: a linguagem não define literais de cadeia
     if caractere in '"\'':
-        return "TONTO nao define literais de cadeia; 'string' e um tipo, nao um valor entre aspas"
+        return ("literal de cadeia nao faz parte dos elementos previstos nesta "
+                "especificacao; 'string' aparece como tipo de atributo, nao como valor")
 
     # Letra acentuada ou fora do ASCII: os padroes de nome aceitam apenas A-Z e a-z.
     if not caractere.isascii() and caractere.isalpha():
@@ -85,4 +87,3 @@ def registrar(entrada, posicao, linha, coluna):
         'contexto': palavra,
         'sugestao': sugerir(caractere, palavra),
     })
-

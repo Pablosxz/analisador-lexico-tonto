@@ -43,23 +43,23 @@ def t_RESERVADA(t):
 
 # Antes de NOME_CLASSE e NOME_RELACAO: senao Planeta1 viraria Planeta + 1.
 def t_NOME_INSTANCIA(t):
-    r'[A-Za-z][A-Za-z]*(_[A-Za-z]+)*[0-9]+'
+    r'[A-Za-z][A-Za-z]*([_-][A-Za-z]+)*[0-9]+'
     return t
 
 # Decidimos tratar NOVO_TIPO como uma categoria especial, pois é um subconjunto de NOME_CLASSE, ou seja, todo CPFDataType também é um nome de classe válido.
 # A regra separada antes pegaria apenas o prefixo de MyDataTypeThing, por exemplo.
 # E depois, jamais seria alcançada. Por isso, a categoria é decidida após o casamento.
 def t_NOME_CLASSE(t):
-    r'[A-Z][A-Za-z]*(_[A-Za-z]+)*'
+    r'[A-Z][A-Za-z]*([_-][A-Za-z]+)*_?'
 
-    # Caso o lexema termine com 'DataType' e não tenha sublinhado, é um NOVO_TIPO.
-    if t.value.endswith('DataType') and '_' not in t.value:
+    # Caso o lexema termine com 'DataType' e não tenha separador, é um NOVO_TIPO.
+    if t.value.endswith('DataType') and '_' not in t.value and '-' not in t.value:
         t.type = 'NOVO_TIPO'
     return t
 
 
 def t_NOME_RELACAO(t):
-    r'[a-z][A-Za-z]*(_[A-Za-z]+)*'
+    r'[a-z][A-Za-z]*([_-][A-Za-z]+)*_?'
 
     # As 64 palavras reservadas começam com minuscula, logo colidem só com este padrão.
     t.type = esp.RESERVADAS.get(t.value, 'NOME_RELACAO')
