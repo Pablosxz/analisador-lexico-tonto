@@ -36,9 +36,9 @@ tokens = [
 # Por isso utilizamos a ordem abaixo.
 # ---------------------------------------------------------------------------------
 
-# Palavra reservada com hifen, que não casa com nenhum outro padrão de nome
+# Naturezas ontológicas com hífen
 def t_RESERVADA(t):
-    r'functional-complexes'
+    r'functional-complexes|intrinsic-modes|extrinsic-modes'
     return t
 
 # Antes de NOME_CLASSE e NOME_RELACAO: senao Planeta1 viraria Planeta + 1.
