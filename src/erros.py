@@ -86,7 +86,3 @@ def registrar(entrada, posicao, linha, coluna):
         'sugestao': sugerir(caractere, palavra),
     })
 
-
-def limpar():
-    # Zera a lista entre analises
-    ERROS.clear()

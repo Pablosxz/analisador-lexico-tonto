@@ -115,9 +115,18 @@ t_ARROBA      = r'@'
 t_DOIS_PONTOS = r':'
 t_VIRGULA     = r','
 
-# --------------------------------------
-# ESPAÇOS EM BRANCO E CONTAGEM DE LINHA
-# --------------------------------------
+# ------------------------------------------------
+# COMENTÁRIOS, ESPAÇOS EM BRANCO E CONTAGEM DE LINHA
+# ------------------------------------------------
+
+def t_comentario_bloco(t):
+    r'/\*[\s\S]*?\*/'
+
+    t.lexer.lineno += t.value.count('\n')
+
+# Não consome o \n final: ele fica para t_newline, que mantém o contador.
+def t_comentario_linha(t):
+    r'//[^\n]*'
 
 # Espaço e tabulação são ignorados
 t_ignore = ' \t'
