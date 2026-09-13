@@ -148,15 +148,14 @@ do `main.py`.
 
 ### Convenções de nomes
 
-As quatro convenções de nome da linguagem são reconhecidas pelas seguintes
-expressões regulares:
+As quatro convenções de nome são reconhecidas pelas seguintes expressões regulares:
 
 | Elemento | Expressão regular | Descrição |
 | --- | --- | --- |
-| Nome de classe | `[A-Z][A-Za-z]*(_[A-Za-z]+)*` | inicia com maiúscula, sem números, sublinhado apenas entre letras |
-| Nome de relação | `[a-z][A-Za-z]*(_[A-Za-z]+)*` | inicia com minúscula, sem números, sublinhado apenas entre letras |
-| Nome de instância | `[A-Za-z][A-Za-z]*(_[A-Za-z]+)*[0-9]+` | inicia com letra e termina com inteiro |
-| Novo tipo de dado | nome de classe terminado em `DataType`, sem sublinhado | `CPFDataType`, `PhoneNumberDataType` |
+| Nome de classe | `[A-Z][A-Za-z]*([_-][A-Za-z]+)*_?` | inicia com maiúscula, sem números |
+| Nome de relação | `[a-z][A-Za-z]*([_-][A-Za-z]+)*_?` | inicia com minúscula, sem números |
+| Nome de instância | `[A-Za-z][A-Za-z]*([_-][A-Za-z]+)*[0-9]+` | inicia com letra e termina com inteiro |
+| Novo tipo de dado | nome de classe terminado em `DataType`, sem separadores | `CPFDataType`, `PhoneNumberDataType` |
 
 ### Visão analítica
 
@@ -216,31 +215,36 @@ execução reporta todos os problemas do arquivo.
 
 Como o analisador recebe apenas o caractere que falhou, e não o lexema completo, o
 módulo de erros reconstrói a palavra em torno da posição do erro antes de formular
-a sugestão. Em `Person_`, por exemplo, o caractere reportado seria apenas o
-sublinhado, uma vez que `Person` já teria sido reconhecido como nome de classe.
+a sugestão. Em `Pessoa__Fisica`, por exemplo, o caractere reportado seria apenas o
+segundo sublinhado, uma vez que `Pessoa_` já teria sido reconhecido como nome de
+classe. Sem essa reconstrução, a mensagem falaria de um sublinhado solto, sem
+indicar em que nome ele ocorre.
 
 Os casos tratados são:
 
 | Entrada | Sugestão apresentada |
 | --- | --- |
-| `Person_` | nomes não podem terminar com sublinhado |
-| `_Pessoa` | nomes não podem começar com sublinhado |
+| `_Pessoa` | nome não pode começar com sublinhado |
 | `Pessoa__Fisica` | sublinhado duplo não é permitido |
-| `has-parent` | a única palavra da linguagem com hífen é `functional-complexes` |
 | `[1.*]` | ponto isolado não é token; a linguagem usa `..` em cardinalidade |
 | `<>-` | operador de relação incompleto |
 | `Person;` | a linguagem não utiliza ponto e vírgula |
 | `name = string` | não existe atribuição; o tipo de um atributo é dado por `:` |
 | `Órgão` | nomes aceitam apenas letras sem acento |
+| `a--b` como nome | o hífen em um nome deve vir entre letras |
 
 Exemplo de saída:
 
 ```
 ERROS LEXICOS (1)
-  linha 23, coluna 7: '_' em 'Person_'
-     sugestao: nomes nao podem terminar com sublinhado; remova-o ou acrescente
-     ao menos uma letra depois dele
+  linha 4, coluna 12: '_' em 'Pessoa__Fisica'
+     sugestao: sublinhado duplo nao e permitido; use um unico sublinhado
+     entre letras
 ```
+
+Um erro léxico não interrompe a análise: o analisador registra a ocorrência,
+avança um caractere e continua, de modo que uma única execução reporta todos os
+problemas do arquivo. Ao final, o programa encerra com código de saída `1`.
 
 ## Sobre a implementação
 
