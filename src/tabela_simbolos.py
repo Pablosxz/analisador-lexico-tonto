@@ -20,3 +20,18 @@ def ocorrencias(categoria):
     # Quantas vezes, no total, os nomes daquela categoria aparecem.
     return sum(len(e['ocorrencias']) for e in SIMBOLOS.values()
                if e['categoria'] == categoria)
+
+
+def serializar():
+    # Transforma SIMBOLOS numa estrutura pronta json para futuros modulos
+    return [
+        {
+            'lexema': lexema,
+            'categoria': entrada['categoria'],
+            'ocorrencias': [
+                {'linha': linha, 'coluna': coluna}
+                for linha, coluna in entrada['ocorrencias']
+            ],
+        }
+        for lexema, entrada in SIMBOLOS.items()
+    ]
