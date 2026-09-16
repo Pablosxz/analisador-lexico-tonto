@@ -31,12 +31,5 @@ def mostrar_erros():
 
     print(f'ERROS LEXICOS ({len(erros.ERROS)})')
     for erro in erros.ERROS:
-        print(f"  linha {erro['linha']}, coluna {erro['coluna']}: "
-              f"'{erro['lexema']}' em '{erro['contexto']}'")
-        sugestao = textwrap.fill(
-            f"sugestao: {erro['sugestao']}",
-            width=76,
-            initial_indent='     ',
-            subsequent_indent='     ',
-        )
-        print(sugestao)
+        print(f"  Erro lexico: simbolo nao reconhecido '{erro['lexema']}' "
+              f"na linha {erro['linha']}, coluna {erro['coluna']}")

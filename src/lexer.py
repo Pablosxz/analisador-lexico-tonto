@@ -149,9 +149,9 @@ def encontrar_coluna(entrada, token):
 # ----------------
 
 def t_error(t):
-    # t.lexer.lexdata guarda a entrada inteira, o que permite calcular a coluna e reconstruir a palavra em volta do erro
+    # t.lexer.lexdata guarda a entrada inteira, o que permite calcular a coluna.
     coluna = encontrar_coluna(t.lexer.lexdata, t)
-    erros.registrar(t.lexer.lexdata, t.lexpos, t.lexer.lineno, coluna)
+    erros.registrar(t.value[0], t.lexer.lineno, coluna)
 
     # Recupera e segue no próximo caractere, em vez de abortar a analise.
     t.lexer.skip(1)
