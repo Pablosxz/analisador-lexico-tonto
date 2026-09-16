@@ -33,6 +33,7 @@ _META_ATRIBUTO = "ordered const derived subsets redefines".split()
 
 RESERVADAS = {}
 
+# Atribui o tipo de token a cada palavra reservada no dicionário
 for _palavra in _EST_CLASSE:
     RESERVADAS[_palavra] = 'EST_CLASSE'
 for _palavra in _EST_RELACAO:
