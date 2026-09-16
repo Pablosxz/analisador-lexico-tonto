@@ -1,0 +1,8 @@
+// Nomes que violam as convencoes de nomenclatura.
+// Erros esperados: '_' na linha 5 (sublinhado inicial) e as letras
+// acentuadas de 'Orgao' na linha 6.
+
+kind _Aluno
+kind Órgão
+
+role estuda_em specializes Aluno

@@ -1,0 +1,11 @@
+// Simbolos que nao pertencem ao alfabeto da linguagem TONTO.
+// Erros esperados: ';' na linha 7 e '=' na linha 8.
+
+package Clinica
+
+kind Paciente {
+    nome: string [1];
+    idade = number [1]
+}
+
+role Medico specializes Paciente
