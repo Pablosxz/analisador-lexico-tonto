@@ -45,4 +45,15 @@ for _palavra in _TIPO_NATIVO:
 for _palavra in _META_ATRIBUTO:
     RESERVADAS[_palavra] = 'META_ATRIBUTO'
 
-
+# Nome do token -> rotulo exibido na tabela de sintese
+CATEGORIAS = {
+    'EST_CLASSE':     'Estereotipos de classe',
+    'EST_RELACAO':    'Estereotipos de relacao',
+    'RESERVADA':      'Palavras reservadas',
+    'TIPO_NATIVO':    'Tipos nativos',
+    'META_ATRIBUTO':  'Meta-atributos',
+    'NOME_CLASSE':    'Classes',
+    'NOME_RELACAO':   'Relacoes',
+    'NOME_INSTANCIA': 'Instancias',
+    'NOVO_TIPO':      'Novos tipos de dado',
+}

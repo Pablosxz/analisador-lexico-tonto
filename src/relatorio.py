@@ -1,21 +1,9 @@
-import textwrap
-
 import erros
 import tabela_simbolos
 
 # Nome interno do token -> rotulo em portugues, na ordem em que aparecem na
 # tabela de sintese.
-CATEGORIAS = {
-    'EST_CLASSE': 'Estereotipos de classe',
-    'EST_RELACAO': 'Estereotipos de relacao',
-    'RESERVADA': 'Palavras reservadas',
-    'TIPO_NATIVO': 'Tipos nativos',
-    'META_ATRIBUTO': 'Meta-atributos',
-    'NOME_CLASSE': 'Classes',
-    'NOME_RELACAO': 'Relacoes',
-    'NOME_INSTANCIA': 'Instancias',
-    'NOVO_TIPO': 'Novos tipos de dado',
-}
+from especificacao import CATEGORIAS
 
 
 def mostrar_visao_analitica(tokens):
