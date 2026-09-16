@@ -23,6 +23,7 @@ especificação da linguagem.
   * [Convenções de nomes](#convenções-de-nomes)
   * [Visão analítica](#visão-analítica)
   * [Tabela de síntese](#tabela-de-síntese)
+  * [Tabela de símbolos em JSON](#tabela-de-símbolos-em-json)
   * [Tratamento de erros léxicos](#tratamento-de-erros-léxicos)
 * [Sobre a implementação](#sobre-a-implementação)
   * [De expressão regular a analisador](#de-expressão-regular-a-analisador)
@@ -109,14 +110,15 @@ analisador-lexico-tonto/
 │   ├── tabela_simbolos.py       Registro dos nomes encontrados
 │   ├── relatorio.py             Impressão das saídas
 │   └── main.py                  Programa principal
+├── saida/                       tabela_simbolos.json (gerado a cada execução)
 ├── requirements.txt
 └── README.md
 ```
 
 Cada módulo tem uma responsabilidade única. O `lexer.py` reconhece, o `erros.py`
 acumula, a `tabela_simbolos.py` registra, o `relatorio.py` imprime e o `main.py`
-orquestra. Nenhum módulo imprime fora do `relatorio.py`, e nenhum lê arquivo fora
-do `main.py`.
+orquestra. Nenhum módulo imprime fora do `relatorio.py`, e nenhum lê ou escreve
+arquivo fora do `main.py`.
 
 ## Análise léxica
 
@@ -206,6 +208,28 @@ Novos tipos de dado                 1            1
 
 As contagens são obtidas da tabela de símbolos, que registra cada lexema junto de
 sua categoria e da lista de todas as suas ocorrências no arquivo.
+
+### Tabela de símbolos em JSON
+
+Além das duas visualizações impressas no terminal, cada execução grava a tabela de
+símbolos completa em `saida/tabela_simbolos.json`, agrupada por lexema:
+
+```json
+[
+  {
+    "lexema": "kind",
+    "categoria": "EST_CLASSE",
+    "ocorrencias": [
+      {"linha": 3, "coluna": 1},
+      {"linha": 4, "coluna": 1}
+    ]
+  }
+]
+```
+
+O arquivo é reconstruído a cada execução (`tabela_simbolos.serializar()`), e serve
+como saída estruturada para uso por outra ferramenta, como uma fase futura de
+análise sintática.
 
 ### Tratamento de erros léxicos
 
