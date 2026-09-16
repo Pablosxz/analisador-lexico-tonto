@@ -1,6 +1,5 @@
 # Vocabulario da linguagem TONTO.
-# Acrescentar ou remover uma palavra se resolve aqui, sem mexer nas expressoes
-# regulares: o lexer.py consulta RESERVADAS depois de casar o lexema.
+# O lexer.py consulta RESERVADAS depois de casar o lexema.
 
 # Estereotipos de classe
 _EST_CLASSE = """

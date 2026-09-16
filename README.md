@@ -7,8 +7,8 @@ sob orientação do professor Patrício de Alencar Silva.
 O analisador lê um arquivo `.tonto`, reconhece os elementos da linguagem e produz
 duas visualizações: a relação analítica de todos os tokens, com linha e coluna de
 ocorrência, e uma tabela de síntese com as quantidades por categoria. Erros léxicos
-são reportados com a localização exata e uma sugestão de correção compatível com a
-especificação da linguagem.
+são reportados com a localização exata, sem interromper a análise. A tabela de
+símbolos completa é ainda gravada em JSON, para uso por outra ferramenta.
 
 ## Sumário
 
@@ -90,7 +90,7 @@ pip install -r requirements.txt
 O programa recebe como argumento o caminho do arquivo a ser analisado:
 
 ```bash
-python src/main.py exemplos/validos/University.tonto
+python src/main.py exemplos/validos/Hospital.tonto
 ```
 
 O programa termina com código de saída `0` quando nenhum erro léxico é encontrado,
@@ -106,7 +106,7 @@ analisador-lexico-tonto/
 ├── src/
 │   ├── especificacao.py         Palavras da linguagem e categorias de token
 │   ├── lexer.py                 Regras léxicas, linha e coluna
-│   ├── erros.py                 Detecção de erro e sugestão de correção
+│   ├── erros.py                 Registro dos erros léxicos encontrados
 │   ├── tabela_simbolos.py       Registro dos nomes encontrados
 │   ├── relatorio.py             Impressão das saídas
 │   └── main.py                  Programa principal
@@ -168,18 +168,17 @@ coluna de sua localização no código-fonte:
 VISAO ANALITICA
  LINHA   COL  TOKEN            LEXEMA
      1     1  RESERVADA        package
-     1     9  NOME_CLASSE      University
-     3     1  EST_CLASSE       category
-     3    10  NOME_CLASSE      Organization
+     1     9  NOME_CLASSE      Hospital
+     3     1  EST_CLASSE       kind
+     3     6  NOME_CLASSE      Unidade_Basica_De_Saude
      4     1  EST_CLASSE       kind
-     4     6  NOME_CLASSE      University
-     4    17  RESERVADA        specializes
-     6     3  ARROBA           @
-     6     4  EST_RELACAO      componentOf
-     7     7  AGREG_ESQ        <>--
-     7    20  INTEIRO          1
-     7    21  INTERVALO        ..
-     7    23  ASTERISCO        *
+     4     6  NOME_CLASSE      Pessoa
+     4    13  ABRE_CHAVE       {
+     5     5  NOME_RELACAO     nome
+     5    10  DOIS_PONTOS      :
+     5    12  TIPO_NATIVO      string
+     5    19  ABRE_COL         [
+     5    20  INTEIRO          1
 ```
 
 A coluna é calculada a partir da posição absoluta do lexema no arquivo, medindo a
@@ -194,16 +193,16 @@ número de nomes distintos do número total de ocorrências:
 
 ```
 TABELA DE SINTESE
-CATEGORIA                   DISTINTOS  OCORRENCIAS
-Estereotipos de classe              3            4
-Estereotipos de relacao             2            2
-Palavras reservadas                10           10
-Tipos nativos                       1            1
-Meta-atributos                      1            1
-Classes                            14           16
-Relacoes                            4            4
-Instancias                          2            2
-Novos tipos de dado                 1            1
+CATEGORIA                    DISTINTOS  OCORRENCIAS
+Estereotipos de classe               4           15
+Estereotipos de relacao              2           15
+Palavras reservadas                  9           30
+Tipos nativos                        3            6
+Meta-atributos                       0            0
+Classes                             23           63
+Relacoes                            17           17
+Instancias                          23           23
+Novos tipos de dado                  0            0
 ```
 
 As contagens são obtidas da tabela de símbolos, que registra cada lexema junto de
@@ -220,55 +219,48 @@ símbolos completa em `saida/tabela_simbolos.json`, agrupada por lexema:
     "lexema": "kind",
     "categoria": "EST_CLASSE",
     "ocorrencias": [
-      {"linha": 3, "coluna": 1},
-      {"linha": 4, "coluna": 1}
+      { "linha": 3, "coluna": 1 },
+      { "linha": 4, "coluna": 1 },
+      { "linha": 10, "coluna": 1 }
     ]
   }
 ]
 ```
 
-O arquivo é reconstruído a cada execução (`tabela_simbolos.serializar()`), e serve
-como saída estruturada para uso por outra ferramenta, como uma fase futura de
-análise sintática.
+O arquivo é reconstruído a cada execução: `tabela_simbolos.serializar()` converte o
+dicionário interno em uma estrutura serializável e o `main.py` a grava em disco.
+Serve como saída estruturada para uso por outra ferramenta, como uma fase futura de
+análise sintática, que precisaria justamente da lista de tokens com suas posições.
+
+Para o arquivo `Hospital.tonto`, o JSON gerado contém 81 lexemas distintos.
 
 ### Tratamento de erros léxicos
 
-Quando um caractere não pertence a nenhum padrão da linguagem, o analisador
-registra o erro e prossegue a partir do caractere seguinte, de modo que uma única
-execução reporta todos os problemas do arquivo.
+Um erro léxico ocorre quando um caractere da entrada não pertence a nenhum padrão
+da linguagem. Nesse caso o analisador **não interrompe a análise**: registra a
+ocorrência com sua posição exata, avança um caractere e prossegue. Uma única
+execução reporta, portanto, todos os problemas do arquivo, e não apenas o primeiro.
 
-Como o analisador recebe apenas o caractere que falhou, e não o lexema completo, o
-módulo de erros reconstrói a palavra em torno da posição do erro antes de formular
-a sugestão. Em `Pessoa__Fisica`, por exemplo, o caractere reportado seria apenas o
-segundo sublinhado, uma vez que `Pessoa_` já teria sido reconhecido como nome de
-classe. Sem essa reconstrução, a mensagem falaria de um sublinhado solto, sem
-indicar em que nome ele ocorre.
+A recuperação é feita pela regra `t_error` do `lexer.py`, que calcula a coluna e
+delega o registro ao módulo `erros.py`. Este acumula as ocorrências em uma lista,
+sem imprimir nada: a exibição fica a cargo do `relatorio.py`, ao final da análise.
 
-Os casos tratados são:
-
-| Entrada | Sugestão apresentada |
-| --- | --- |
-| `_Pessoa` | nome não pode começar com sublinhado |
-| `Pessoa__Fisica` | sublinhado duplo não é permitido |
-| `[1.*]` | ponto isolado não é token; a linguagem usa `..` em cardinalidade |
-| `<>-` | operador de relação incompleto |
-| `Person;` | a linguagem não utiliza ponto e vírgula |
-| `name = string` | não existe atribuição; o tipo de um atributo é dado por `:` |
-| `Órgão` | nomes aceitam apenas letras sem acento |
-| `a--b` como nome | o hífen em um nome deve vir entre letras |
-
-Exemplo de saída:
+Exemplo de saída para um arquivo com quatro construções inválidas:
 
 ```
-ERROS LEXICOS (1)
-  linha 4, coluna 12: '_' em 'Pessoa__Fisica'
-     sugestao: sublinhado duplo nao e permitido; use um unico sublinhado
-     entre letras
+ERROS LEXICOS (5)
+  Erro lexico: simbolo nao reconhecido '_' na linha 2, coluna 6
+  Erro lexico: simbolo nao reconhecido ';' na linha 3, coluna 12
+  Erro lexico: simbolo nao reconhecido '=' na linha 4, coluna 6
+  Erro lexico: simbolo nao reconhecido 'Ó' na linha 5, coluna 6
+  Erro lexico: simbolo nao reconhecido 'ã' na linha 5, coluna 9
 ```
 
-Um erro léxico não interrompe a análise: o analisador registra a ocorrência,
-avança um caractere e continua, de modo que uma única execução reporta todos os
-problemas do arquivo. Ao final, o programa encerra com código de saída `1`.
+O último caso ilustra o comportamento da recuperação: o nome `Órgão` produz duas
+ocorrências, uma para cada letra acentuada, porque o analisador retoma a leitura
+no caractere seguinte a cada falha.
+
+Havendo ao menos um erro léxico, o programa encerra com código de saída `1`.
 
 ## Sobre a implementação
 
