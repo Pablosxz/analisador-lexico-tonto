@@ -220,3 +220,6 @@ __marimo__/
 parser.out
 parsetab.py
 lextab.py
+
+# Saida gerada pelo analisador (tabela de simbolos em json)
+saida/
