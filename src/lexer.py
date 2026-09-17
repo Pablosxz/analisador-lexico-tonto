@@ -36,28 +36,34 @@ tokens = [
 # Por isso utilizamos a ordem abaixo.
 # ---------------------------------------------------------------------------------
 
-# Naturezas ontológicas com hífen
+# Naturezas ontológicas: as tres palavras da linguagem escritas com hifen.
+# Precisam de regra propria porque o hifen nao faz parte de nenhum padrao de nome.
 def t_RESERVADA(t):
     r'functional-complexes|intrinsic-modes|extrinsic-modes'
     return t
 
+# Novo tipo de dado: inicia com letra, sem numeros nem separadores, e termina com a subcadeia DataType.
+# O (?!...) no fim exige que NADA de nome venha depois do DataType.
+def t_NOVO_TIPO(t):
+    r'[A-Za-z]+DataType(?![A-Za-z0-9_-])'
+    return t
+
+# Nome de instancia: inicia com qualquer letra e termina em numero. Ex.: Planeta1, pizza03.
 # Antes de NOME_CLASSE e NOME_RELACAO: senao Planeta1 viraria Planeta + 1.
 def t_NOME_INSTANCIA(t):
     r'[A-Za-z][A-Za-z]*([_-][A-Za-z]+)*[0-9]+'
     return t
 
-# Decidimos tratar NOVO_TIPO como uma categoria especial, pois é um subconjunto de NOME_CLASSE, ou seja, todo CPFDataType também é um nome de classe válido.
-# A regra separada antes pegaria apenas o prefixo de MyDataTypeThing, por exemplo.
-# E depois, jamais seria alcançada. Por isso, a categoria é decidida após o casamento.
+
+# Nome de classe: inicia com maiuscula, sem numeros, com sublinhado ou hifen
+# entre letras. Ex.: Person, Second_Baptist_Church.
 def t_NOME_CLASSE(t):
     r'[A-Z][A-Za-z]*([_-][A-Za-z]+)*_?'
-
-    # Caso o lexema termine com 'DataType' e não tenha separador, é um NOVO_TIPO.
-    if t.value.endswith('DataType') and '_' not in t.value and '-' not in t.value:
-        t.type = 'NOVO_TIPO'
     return t
 
 
+# Nome de relacao: mesmo padrao, iniciando com minuscula. Ex.: hasParent, is_part_of.
+# Pega tambem as palavras da linguagem, que tem esta mesma forma (por isso a consulta).
 def t_NOME_RELACAO(t):
     r'[a-z][A-Za-z]*([_-][A-Za-z]+)*_?'
 
@@ -66,6 +72,7 @@ def t_NOME_RELACAO(t):
     return t
 
 
+# Inteiro: aparece apenas em cardinalidade. Ex.: o 1 e o 2 em [1..2].
 def t_INTEIRO(t):
     r'[0-9]+'
     return t
@@ -73,28 +80,33 @@ def t_INTEIRO(t):
 
 # --- Operadores de vários caracteres ---
 
+# Composicao: a parte não é compartilhavel com outro todo.
 # 5 caracteres: tem de ser testado antes de <>-- e de --
 def t_COMPOSICAO(t):
     r'<o>--'
     return t
 
 
+# Agregacao com o losango a esquerda: o todo e a classe do lado esquerdo.
 def t_AGREG_ESQ(t):
     r'<>--'
     return t
 
 
+# Agregacao espelhada: o todo e a classe do lado direito.
 # Antes de CONECTOR, se não o -- inicial seria consumido sozinho
 def t_AGREG_DIR(t):
     r'--<>'
     return t
 
 
+# Conector de relacao comum, sem losango. Ex.: [1..*] -- [1] Employee.
 def t_CONECTOR(t):
     r'--'
     return t
 
 
+# Intervalo de cardinalidade. O ponto isolado nao e token da linguagem: so o par.
 def t_INTERVALO(t):
     r'\.\.'
     return t
@@ -119,11 +131,13 @@ t_VIRGULA     = r','
 # COMENTÁRIOS, ESPAÇOS EM BRANCO E CONTAGEM DE LINHA
 # ------------------------------------------------
 
+# Comentario de varias linhas. Reconhecido e descartado: sem return, nao vira token.
 def t_comentario_bloco(t):
     r'/\*[\s\S]*?\*/'
 
     t.lexer.lineno += t.value.count('\n')
 
+# Comentario de uma linha, tambem descartado.
 # Não consome o \n final: ele fica para t_newline, que mantém o contador.
 def t_comentario_linha(t):
     r'//[^\n]*'
@@ -148,6 +162,7 @@ def encontrar_coluna(entrada, token):
 # ERRO LEXICO
 # ----------------
 
+# Chamada quando nenhum padrao casa com o caractere na posicao atual.
 def t_error(t):
     # t.lexer.lexdata guarda a entrada inteira, o que permite calcular a coluna.
     coluna = encontrar_coluna(t.lexer.lexdata, t)
