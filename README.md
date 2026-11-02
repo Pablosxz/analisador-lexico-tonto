@@ -25,10 +25,15 @@ símbolos completa é ainda gravada em JSON, para uso por outra ferramenta.
   * [Tabela de síntese](#tabela-de-síntese)
   * [Tabela de símbolos em JSON](#tabela-de-símbolos-em-json)
   * [Tratamento de erros léxicos](#tratamento-de-erros-léxicos)
+* [Análise sintática](#análise-sintática)
+  * [Construções reconhecidas](#construções-reconhecidas)
+  * [Decisões de projeto](#decisões-de-projeto)
+  * [Conflito shift/reduce](#conflito-shiftreduce)
+  * [Tratamento de erros sintáticos](#tratamento-de-erros-sintáticos)
 * [Sobre a implementação](#sobre-a-implementação)
   * [De expressão regular a analisador](#de-expressão-regular-a-analisador)
   * [Ordem das regras](#ordem-das-regras)
-  * [Sobre o NOVO_TIPO](#sobre-o-novo_tipo)
+  * [Por que uma regra só para nomes](#por-que-uma-regra-só-para-nomes)
 * [Autores](#autores)
 * [Referências](#referências)
 
@@ -50,9 +55,9 @@ especificada textualmente com a linguagem TONTO, reconhecendo:
 | Tecnologia | Versão | Finalidade |
 | --- | --- | --- |
 | Python | 3.10 ou superior | linguagem de implementação |
-| PLY (Python Lex-Yacc) | 3.11 | geração do analisador léxico a partir de expressões regulares |
+| PLY (Python Lex-Yacc) | 3.11 | geração dos analisadores léxico (lex) e sintático (yacc) |
 
-O PLY é a implementação em Python da ferramenta LEX. A partir das expressões
+O PLY é a implementação em Python das ferramentas LEX e YACC. A partir das expressões
 regulares declaradas no projeto, ele constrói o autômato finito que reconhece os
 tokens da linguagem.
 
@@ -128,7 +133,8 @@ arquivo fora do `main.py`.
 | --- | --- | --- |
 | `EST_CLASSE` | estereótipo de classe | `kind`, `role`, `phase` |
 | `EST_RELACAO` | estereótipo de relação | `componentOf`, `mediation` |
-| `RESERVADA` | palavra reservada | `package`, `import`, `genset` |
+| `PACKAGE`, `IMPORT`, `GENSET`... | palavra reservada, um token para cada | `package`, `import`, `datatype` |
+| `NATUREZA` | natureza ontológica, usada após `of` | `functional-complexes`, `relators` |
 | `TIPO_NATIVO` | tipo de dado nativo | `string`, `number`, `date` |
 | `META_ATRIBUTO` | meta-atributo de atributo | `ordered`, `const` |
 | `NOME_CLASSE` | nome de classe | `Person`, `Second_Baptist_Church` |
@@ -148,16 +154,22 @@ arquivo fora do `main.py`.
 | `DOIS_PONTOS` | tipo de atributo | `:` |
 | `VIRGULA` | separador de itens | `,` |
 
+Cada palavra reservada tem um token próprio porque o analisador sintático precisa
+diferenciá-las: `package` e `genset`, por exemplo, iniciam construções diferentes.
+
 ### Convenções de nomes
 
-As quatro convenções de nome são reconhecidas pelas seguintes expressões regulares:
+Todo nome é reconhecido por uma única expressão regular,
+`[A-Za-z][A-Za-z0-9]*([_-][A-Za-z0-9]+)*_?`, e a categoria é decidida depois pela
+função `classificar_nome`, nesta ordem:
 
-| Elemento | Expressão regular | Descrição |
+| Condição | Token | Exemplo |
 | --- | --- | --- |
-| Nome de classe | `[A-Z][A-Za-z]*([_-][A-Za-z]+)*_?` | inicia com maiúscula, sem números |
-| Nome de relação | `[a-z][A-Za-z]*([_-][A-Za-z]+)*_?` | inicia com minúscula, sem números |
-| Nome de instância | `[A-Za-z][A-Za-z]*([_-][A-Za-z]+)*[0-9]+` | inicia com letra e termina com inteiro |
-| Novo tipo de dado | nome de classe terminado em `DataType`, sem separadores | `CPFDataType`, `PhoneNumberDataType` |
+| é uma palavra da linguagem | token da palavra | `kind`, `package` |
+| só letras e termina em `DataType` | `NOVO_TIPO` | `CPFDataType` |
+| termina em número | `NOME_INSTANCIA` | `Planeta1`, `pizza03` |
+| começa com maiúscula | `NOME_CLASSE` | `Person`, `Second_Baptist_Church` |
+| começa com minúscula | `NOME_RELACAO` | `hasParent`, `is_part_of` |
 
 ### Visão analítica
 
@@ -262,6 +274,125 @@ no caractere seguinte a cada falha.
 
 Havendo ao menos um erro léxico, o programa encerra com código de saída `1`.
 
+## Análise sintática
+
+O analisador sintático (`src/parser.py`) é gerado pelo módulo `yacc` do PLY, que
+constrói um analisador ascendente LALR(1), o mesmo método do Bison. Cada regra da
+gramática é uma função `p_...`: a regra fica na docstring e o corpo é executado
+quando o PLY reduz aquela regra. O resultado da análise de um arquivo é um
+dicionário com o pacote e suas declarações, usado pela tabela de símbolos e pelas
+saídas.
+
+### Construções reconhecidas
+
+| Construção | Exemplo |
+| --- | --- |
+| Pacote e importação | `import Pessoa` e `package Hospital` |
+| Classe | `role Medico specializes Pessoa { especialidade : Especialidade }` |
+| Classe enumerada | `enum Especialidade { Pediatra01, Dentista02 }` |
+| Tipo de dado complexo | `datatype Telefone { ddd : number  numero : string }` |
+| Relação interna (dentro da classe) | `@mediation [1..*] -- [1] Paciente` |
+| Relação externa | `@material relation Paciente [1..*] -- consulta -- [1..*] Medico` |
+| Conjunto de generalização | `disjoint complete genset Fases { general Pessoa specifics Crianca, Adulto }` |
+
+<details>
+<summary>Gramática completa</summary>
+
+```
+ontologia         → lista_imports PACKAGE nome conteudo
+lista_imports     → lista_imports importacao | vazio
+importacao        → IMPORT nome
+conteudo          → conteudo elemento | vazio
+elemento          → classe | enum_decl | datatype_decl | genset_decl
+                  | relacao_externa | error
+
+classe            → EST_CLASSE nome natureza heranca corpo_classe
+natureza          → OF lista_naturezas | vazio
+lista_naturezas   → lista_naturezas VIRGULA NATUREZA | NATUREZA
+heranca           → SPECIALIZES lista_nomes | vazio
+lista_nomes       → lista_nomes VIRGULA nome | nome
+corpo_classe      → ABRE_CHAVE membros FECHA_CHAVE | vazio
+membros           → membros membro | vazio
+membro            → atributo | relacao_interna
+
+atributo          → nome DOIS_PONTOS tipo cardinalidade_opc meta_opc
+tipo              → TIPO_NATIVO | nome
+cardinalidade     → ABRE_COL limite FECHA_COL
+                  | ABRE_COL limite INTERVALO limite FECHA_COL
+limite            → INTEIRO | ASTERISCO
+cardinalidade_opc → cardinalidade | vazio
+meta_opc          → ABRE_CHAVE lista_meta FECHA_CHAVE | vazio
+lista_meta        → lista_meta VIRGULA META_ATRIBUTO | META_ATRIBUTO
+
+enum_decl         → ENUM nome ABRE_CHAVE valores_enum FECHA_CHAVE
+valores_enum      → valores_enum VIRGULA nome | nome
+
+datatype_decl     → DATATYPE nome heranca_tipo corpo_datatype
+heranca_tipo      → SPECIALIZES tipo | vazio
+corpo_datatype    → ABRE_CHAVE atributos FECHA_CHAVE | vazio
+atributos         → atributos atributo | vazio
+
+genset_decl       → restricoes GENSET nome ABRE_CHAVE GENERAL nome
+                    SPECIFICS lista_nomes FECHA_CHAVE
+restricoes        → DISJOINT COMPLETE | DISJOINT | COMPLETE | vazio
+
+relacao_externa   → estereotipo_rel RELATION nome dados_relacao
+relacao_interna   → estereotipo_rel dados_relacao
+estereotipo_rel   → ARROBA EST_RELACAO | vazio
+dados_relacao     → cardinalidade_opc ligacao cardinalidade nome
+ligacao           → tipo_ligacao | CONECTOR nome CONECTOR | AGREG_ESQ nome CONECTOR
+tipo_ligacao      → CONECTOR | AGREG_ESQ | AGREG_DIR
+
+nome              → NOME_CLASSE | NOME_RELACAO | NOME_INSTANCIA | NOVO_TIPO
+```
+
+</details>
+
+### Decisões de projeto
+
+* **Um pacote por arquivo.** Cada arquivo tem os imports seguidos de um `package`,
+  como em todos os exemplos do professor. Uma ontologia com vários pacotes é
+  dividida em vários arquivos, analisados juntos.
+* **Qualquer nome onde a gramática espera um nome.** Os exemplos do professor nem
+  sempre seguem as convenções (a classe `ClassName1`, por exemplo, termina em
+  número), então os quatro tipos de nome são aceitos.
+* **Reconhecer sem guardar.** Naturezas, cardinalidades, meta-atributos,
+  estereótipos e tipos de ligação das relações, restrições do genset e valores de
+  enums são reconhecidos para que o arquivo seja aceito, mas não são guardados,
+  porque as saídas não os utilizam.
+
+### Conflito shift/reduce
+
+O PLY aponta um conflito: dentro de uma classe, depois de um atributo como
+`nome : string`, um `[` pode ser a cardinalidade do atributo ou o início de uma
+relação interna sem estereótipo. O PLY resolve pelo *shift*, associando o `[` ao
+atributo, que é o comportamento desejado, como no caso do *else* pendente. O
+conflito aparece no arquivo `src/parser.out`, gerado junto com o analisador.
+
+Um segundo conflito foi evitado escrevendo as ligações com nome por extenso
+(`CONECTOR nome CONECTOR` e `AGREG_ESQ nome CONECTOR`), para que o PLY só decida o
+tipo da ligação depois de ler o nome.
+
+### Tratamento de erros sintáticos
+
+Quando nenhuma regra aceita o próximo token, a função `p_error` consulta a tabela do
+PLY para saber quais tokens eram esperados naquele ponto e monta uma sugestão. Para
+continuar depois do erro, a regra `elemento : error` aplica o modo pânico: o
+analisador descarta tokens até o início da próxima declaração e retoma a análise.
+
+Erros encontrados em `exemplos/invalidos/sintaxe_invalida.tonto`:
+
+| Linha | Erro | Sugestão |
+| --- | --- | --- |
+| 6 | `'string'` não era esperado | confira a escrita desta linha perto de `'string'` |
+| 9 | `'kind'` não era esperado | faltou um nome antes de `'kind'` |
+| 10 | `'Verde'` não era esperado | esperava `','` ou `'}'` |
+| 12 | `'specifics'` não era esperado | faltou `'general'` antes de `'specifics'` |
+| fim | o arquivo terminou antes da hora | falta fechar uma `'}'` |
+
+Se o arquivo termina no meio de uma declaração, não há onde retomar: o erro é
+registrado e o restante do arquivo não é analisado.
+
 ## Sobre a implementação
 
 ### De expressão regular a analisador
@@ -288,29 +419,18 @@ expressão regular da família POSIX. O PLY delega o casamento ao módulo `re` d
 Python, de semântica *leftmost-first*, no qual vence a primeira alternativa que
 casa, independentemente do número de caracteres consumidos.
 
-Por esse motivo, a ordem de declaração das regras neste projeto foi definida explicitamente:
+Por isso a ordem de declaração importa nos operadores de relação: `<o>--`, `<>--` e
+`--<>` são testados antes de `--`, senão o `--` inicial seria consumido sozinho. Nos
+nomes o problema não ocorre, porque uma única regra reconhece a palavra inteira.
 
-```
-NOME_INSTANCIA  ->  NOME_CLASSE  ->  NOME_RELACAO
-```
+### Por que uma regra só para nomes
 
-Sem essa ordem, `Planeta1` seria reconhecido como o nome de classe `Planeta`
-seguido do inteiro `1`. O mesmo cuidado se aplica aos operadores de relação, em que
-`<o>--`, `<>--` e `--<>` precisam ser testados antes de `--`.
-
-### Sobre o NOVO_TIPO
-
-A categoria `NOVO_TIPO` não possui regra própria. Todo lexema terminado em
-`DataType` é também um nome de classe válido, de modo que os dois padrões não são
-mutuamente exclusivos: a linguagem reconhecida por `NOVO_TIPO` está contida na
-linguagem reconhecida por `NOME_CLASSE`.
-
-Uma regra separada falharia nas duas posições possíveis. Declarada antes de
-`NOME_CLASSE`, consumiria apenas o prefixo de nomes mais longos, dividindo
-`MyDataTypeThing` em `MyDataType` e `Thing`. Declarada depois, nunca seria
-alcançada. A categoria é, portanto, decidida após o reconhecimento do lexema
-completo, do mesmo modo como as palavras reservadas são distinguidas dos nomes de
-relação por consulta a uma tabela.
+Com uma regra por categoria de nome, cada uma reconhecia apenas o trecho da palavra
+que combinava com ela. No exemplo `TDAH.tonto` do professor, `Criterion_A1a` era
+dividido em `Criterion_A1` (instância) e `a` (relação), e o analisador sintático
+recebia dois nomes seguidos. Reconhecendo a palavra inteira primeiro e decidindo a
+categoria depois, como já era feito com as palavras reservadas, nenhum nome é
+cortado.
 
 ## Autores
 
