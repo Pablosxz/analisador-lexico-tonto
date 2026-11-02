@@ -67,7 +67,9 @@ def p_conteudo(p):
 
 def p_elemento(p):
     '''elemento : importacao
-                | classe'''
+                | classe
+                | enum_decl
+                | datatype_decl'''
     p[0] = p[1]  # repassa o que já foi montado
 
 
@@ -76,13 +78,14 @@ def p_elemento(p):
 # =============================================================================
 
 def p_classe(p):
-    'classe : EST_CLASSE nome natureza heranca'
+    'classe : EST_CLASSE nome natureza heranca corpo_classe'
     p[0] = {
         'construto': 'classe',
         'estereotipo': p[1], # kind, role, phase...
         'nome': p[2],
         'linha': p.lineno(1),
         'pais': p[4], # classes que ela especializa
+        'atributos': p[5],
     }
 
 
@@ -108,6 +111,120 @@ def p_lista_nomes(p):
     '''lista_nomes : lista_nomes VIRGULA nome
                    | nome'''
     p[0] = p[1] + [p[3]] if len(p) == 4 else [p[1]]
+
+
+# Corpo opcional entre chaves: { nome : string [1] ... }
+def p_corpo_classe(p):
+    '''corpo_classe : ABRE_CHAVE membros FECHA_CHAVE
+                    | vazio'''
+    p[0] = p[2] if len(p) == 4 else []
+
+
+def p_membros(p):
+    '''membros : membros membro
+               | vazio'''
+    p[0] = p[1] + [p[2]] if len(p) == 3 else []
+
+
+def p_membro(p):
+    'membro : atributo'
+    p[0] = p[1]
+
+
+# =============================================================================
+# 3. ATRIBUTOS E CARDINALIDADE
+# =============================================================================
+
+# Ex.: nome : string [1] { const }
+# A cardinalidade e os meta-atributos do atributo não são usados nas saídas.
+def p_atributo(p):
+    'atributo : nome DOIS_PONTOS tipo cardinalidade_opc meta_opc'
+    p[0] = {'construto': 'atributo', 'nome': p[1], 'tipo': p[3], 'linha': p.lineno(1)}
+
+
+def p_tipo(p):
+    '''tipo : TIPO_NATIVO
+            | nome'''
+    p[0] = p[1]
+
+
+# Guardada como texto ("1", "1..*") porque é mostrada nas relações.
+def p_cardinalidade(p):
+    '''cardinalidade : ABRE_COL limite FECHA_COL
+                     | ABRE_COL limite INTERVALO limite FECHA_COL'''
+    p[0] = p[2] if len(p) == 4 else f'{p[2]}..{p[4]}'
+
+
+def p_limite(p):
+    '''limite : INTEIRO
+              | ASTERISCO'''
+    p[0] = p[1]
+
+
+def p_cardinalidade_opc(p):
+    '''cardinalidade_opc : cardinalidade
+                         | vazio'''
+    p[0] = p[1]
+
+
+def p_meta_opc(p):
+    '''meta_opc : ABRE_CHAVE lista_meta FECHA_CHAVE
+                | vazio'''
+
+
+def p_lista_meta(p):
+    '''lista_meta : lista_meta VIRGULA META_ATRIBUTO
+                  | META_ATRIBUTO'''
+
+
+# =============================================================================
+# 4. ENUMS
+# =============================================================================
+
+def p_enum_decl(p):
+    'enum_decl : ENUM nome ABRE_CHAVE valores_enum FECHA_CHAVE'
+    p[0] = {'construto': 'enum', 'nome': p[2], 'linha': p.lineno(1), 'valores': p[4]}
+
+
+def p_valores_enum(p):
+    '''valores_enum : valores_enum VIRGULA nome
+                    | nome'''
+    p[0] = p[1] + [p[3]] if len(p) == 4 else [p[1]]
+
+
+# =============================================================================
+# 5. DATATYPES
+# =============================================================================
+
+def p_datatype_decl(p):
+    'datatype_decl : DATATYPE nome heranca_tipo corpo_datatype'
+    p[0] = {
+        'construto': 'datatype',
+        'nome': p[2],
+        'linha': p.lineno(1),
+        'pai': p[3], # tipo especializado, ou None
+        'atributos': p[4],
+    }
+
+
+# Ex.: datatype int specializes number
+def p_heranca_tipo(p):
+    '''heranca_tipo : SPECIALIZES tipo
+                    | vazio'''
+    p[0] = p[2] if len(p) == 3 else None
+
+
+# Ao contrário da classe, o corpo de um datatype só tem atributos.
+def p_corpo_datatype(p):
+    '''corpo_datatype : ABRE_CHAVE atributos FECHA_CHAVE
+                      | vazio'''
+    p[0] = p[2] if len(p) == 4 else []
+
+
+def p_atributos(p):
+    '''atributos : atributos atributo
+                 | vazio'''
+    p[0] = p[1] + [p[2]] if len(p) == 3 else []
 
 
 # =============================================================================
