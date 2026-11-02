@@ -9,16 +9,20 @@ ERROS_SINTATICOS = []
 
 
 # =============================================================================
-# 1. ARQUIVO, PACOTES E IMPORTS
+# 1. PACOTE E IMPORTS
 # =============================================================================
-# A primeira regra é o símbolo inicial: o arquivo inteiro.
+# A primeira regra é o símbolo inicial: o arquivo inteiro, com um pacote.
+# Ontologias com vários pacotes ficam em vários arquivos.
 
 def p_ontologia(p):
-    'ontologia : lista_imports lista_pacotes'
-    pacotes = p[2]
-    # Imports escritos antes do primeiro package pertencem a ele.
-    pacotes[0]['imports'] = p[1] + pacotes[0]['imports']
-    p[0] = pacotes
+    'ontologia : lista_imports PACKAGE nome conteudo'
+    p[0] = {
+        'nome': p[3],
+        'linha': p.lineno(2),
+        'imports': p[1],
+        # Declarações com erro de sintaxe ficam de fora (já estão no relatório).
+        'declaracoes': [e for e in p[4] if e['construto'] != 'erro'],
+    }
 
 
 def p_lista_imports(p):
@@ -32,29 +36,7 @@ def p_lista_imports(p):
 
 def p_importacao(p):
     'importacao : IMPORT nome'
-    p[0] = {'construto': 'import', 'nome': p[2], 'linha': p.lineno(1)}
-
-
-def p_lista_pacotes(p):
-    '''lista_pacotes : lista_pacotes pacote
-                     | pacote'''
-    if len(p) == 3:
-        p[0] = p[1] + [p[2]]
-    else:
-        p[0] = [p[1]]
-
-
-def p_pacote(p):
-    'pacote : PACKAGE nome conteudo'
-    elementos = p[3]
-    p[0] = {
-        'construto': 'pacote',
-        'nome': p[2],
-        'linha': p.lineno(1),
-        'imports': [e for e in elementos if e['construto'] == 'import'],
-        # Declarações com erro de sintaxe ficam de fora (já estão no relatório).
-        'declaracoes': [e for e in elementos if e['construto'] not in ('import', 'erro')],
-    }
+    p[0] = {'nome': p[2], 'linha': p.lineno(1)}
 
 
 def p_conteudo(p):
@@ -67,8 +49,7 @@ def p_conteudo(p):
 
 
 def p_elemento(p):
-    '''elemento : importacao
-                | classe
+    '''elemento : classe
                 | enum_decl
                 | datatype_decl
                 | genset_decl
@@ -149,7 +130,7 @@ def p_membro(p):
 # =============================================================================
 
 # Ex.: nome : string [1] { const }
-# A cardinalidade e os meta-atributos do atributo não são usados nas saídas.
+# Os meta-atributos (ordered, const...) também não são guardados.
 def p_atributo(p):
     'atributo : nome DOIS_PONTOS tipo cardinalidade_opc meta_opc'
     p[0] = {'construto': 'atributo', 'nome': p[1], 'tipo': p[3], 'linha': p.lineno(1)}
@@ -161,23 +142,20 @@ def p_tipo(p):
     p[0] = p[1]
 
 
-# Guardada como texto ("1", "1..*") porque é mostrada nas relações.
+# Ex.: [1] ou [1..*]. Usada em atributos e relações, mas não é guardada.
 def p_cardinalidade(p):
     '''cardinalidade : ABRE_COL limite FECHA_COL
                      | ABRE_COL limite INTERVALO limite FECHA_COL'''
-    p[0] = p[2] if len(p) == 4 else f'{p[2]}..{p[4]}'
 
 
 def p_limite(p):
     '''limite : INTEIRO
               | ASTERISCO'''
-    p[0] = p[1]
 
 
 def p_cardinalidade_opc(p):
     '''cardinalidade_opc : cardinalidade
                          | vazio'''
-    p[0] = p[1]
 
 
 def p_meta_opc(p):
@@ -196,13 +174,12 @@ def p_lista_meta(p):
 
 def p_enum_decl(p):
     'enum_decl : ENUM nome ABRE_CHAVE valores_enum FECHA_CHAVE'
-    p[0] = {'construto': 'enum', 'nome': p[2], 'linha': p.lineno(1), 'valores': p[4]}
+    p[0] = {'construto': 'enum', 'nome': p[2], 'linha': p.lineno(1)}
 
 
 def p_valores_enum(p):
     '''valores_enum : valores_enum VIRGULA nome
                     | nome'''
-    p[0] = p[1] + [p[3]] if len(p) == 4 else [p[1]]
 
 
 # =============================================================================
@@ -244,36 +221,24 @@ def p_atributos(p):
 # 6. GENSETS
 # =============================================================================
 
-# Forma com chaves: disjoint complete genset Nome { general A specifics B, C }
-def p_genset_completo(p):
+# Ex.: disjoint complete genset Fases { general Pessoa specifics Crianca, Adulto }
+def p_genset_decl(p):
     'genset_decl : restricoes GENSET nome ABRE_CHAVE GENERAL nome SPECIFICS lista_nomes FECHA_CHAVE'
-    p[0] = montar_genset(p[1], p[3], p[6], p[8], p.lineno(2))
-
-
-# Forma curta: disjoint complete genset Nome where B, C specializes A
-def p_genset_curto(p):
-    'genset_decl : restricoes GENSET nome WHERE lista_nomes SPECIALIZES nome'
-    p[0] = montar_genset(p[1], p[3], p[7], p[5], p.lineno(2))
-
-
-def montar_genset(restricoes, nome, geral, especificos, linha):
-    return {
+    p[0] = {
         'construto': 'genset',
-        'nome': nome,
-        'linha': linha,
-        'disjoint': 'disjoint' in restricoes,
-        'complete': 'complete' in restricoes,
-        'geral': geral,
-        'especificos': especificos,
+        'nome': p[3],
+        'linha': p.lineno(2),
+        'geral': p[6],
+        'especificos': p[8],
     }
 
 
+# disjoint e complete são opcionais e não são guardados.
 def p_restricoes(p):
     '''restricoes : DISJOINT COMPLETE
                   | DISJOINT
                   | COMPLETE
                   | vazio'''
-    p[0] = [x for x in p[1:] if x] # ex.: ['disjoint', 'complete']
 
 
 # =============================================================================
@@ -284,18 +249,18 @@ def p_restricoes(p):
 
 def p_relacao_externa(p):
     'relacao_externa : estereotipo_rel RELATION nome dados_relacao'
-    p[0] = dict(p[4], estereotipo=p[1], origem=p[3], linha=p.lineno(2))
+    p[0] = dict(p[4], origem=p[3], linha=p.lineno(2))
 
 
 def p_relacao_interna(p):
     'relacao_interna : estereotipo_rel dados_relacao'
-    p[0] = dict(p[2], estereotipo=p[1], linha=p.lineno(2))
+    p[0] = dict(p[2], linha=p.lineno(2))
 
 
+# O estereótipo (@material, @mediation...) é opcional e não é guardado.
 def p_estereotipo_rel(p):
     '''estereotipo_rel : ARROBA EST_RELACAO
                        | vazio'''
-    p[0] = p[2] if len(p) == 3 else None
 
 
 # Ex.: [1] <>-- tem -- [1..*] Departamento
@@ -303,9 +268,7 @@ def p_dados_relacao(p):
     'dados_relacao : cardinalidade_opc ligacao cardinalidade nome'
     p[0] = {
         'construto': 'relacao',
-        'card_origem': p[1],
         'nome': p[2], # nome da relação, ou None
-        'card_destino': p[3],
         'destino': p[4],
     }
 
@@ -319,18 +282,15 @@ def p_ligacao_sem_nome(p):
 # assim o PLY só decide o tipo da ligação depois de ver o nome.
 def p_ligacao_com_nome(p):
     '''ligacao : CONECTOR nome CONECTOR
-               | AGREG_ESQ nome CONECTOR
-               | COMPOSICAO nome CONECTOR
-               | CONECTOR nome AGREG_DIR'''
+               | AGREG_ESQ nome CONECTOR'''
     p[0] = p[2]
 
 
-# O tipo da ligação (--, <>--, --<>, <o>--) não é usado nas saídas.
+# O tipo da ligação (--, <>--, --<>) não é guardado.
 def p_tipo_ligacao(p):
     '''tipo_ligacao : CONECTOR
                     | AGREG_ESQ
-                    | AGREG_DIR
-                    | COMPOSICAO'''
+                    | AGREG_DIR'''
 
 
 # =============================================================================
@@ -364,7 +324,7 @@ LEGIVEL = {
     'ABRE_CHAVE': "'{'", 'FECHA_CHAVE': "'}'", 'ABRE_COL': "'['", 'FECHA_COL': "']'",
     'INTERVALO': "'..'", 'ASTERISCO': "'*'", 'ARROBA': "'@'", 'DOIS_PONTOS': "':'",
     'VIRGULA': "','", 'CONECTOR': "'--'", 'AGREG_ESQ': "'<>--'", 'AGREG_DIR': "'--<>'",
-    'COMPOSICAO': "'<o>--'", '$end': 'o fim do arquivo',
+    '$end': 'o fim do arquivo',
 }
 
 
@@ -405,9 +365,8 @@ parser = yacc.yacc(debug=True)
 
 
 def analisar(texto):
+    # Devolve o pacote do arquivo, ou None se um erro impediu a análise
+    # (por exemplo, o arquivo termina no meio de uma declaração).
     # Cada arquivo usa um léxico novo, começando na linha 1.
-    resultado = parser.parse(texto, lexer=lexer.construir(), tracking=True)
-    # Se o arquivo termina no meio de uma declaração, o PLY não se recupera e
-    # devolve None. O erro já foi registrado, então devolve uma lista vazia.
-    return resultado or []
+    return parser.parse(texto, lexer=lexer.construir(), tracking=True)
 
