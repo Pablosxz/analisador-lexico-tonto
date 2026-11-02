@@ -25,8 +25,7 @@ _RESERVADA = """
 # Naturezas ontologicas (usadas depois de "of"). Todas tem o mesmo papel na
 # gramatica, por isso dividem um unico token: NATUREZA.
 _NATUREZA = """
-    objects functional-complexes collectives quantities relators intrinsic-modes
-    extrinsic-modes qualities events situations types abstract-individuals
+    functional-complexes relators intrinsic-modes extrinsic-modes
 """.split()
 
 # Tipos de dado nativos
