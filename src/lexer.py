@@ -3,10 +3,13 @@ import especificacao as esp
 import erros
 
 tokens = [
+    # palavras reservadas: um token para cada uma (PACKAGE, IMPORT, GENSET...)
+    *[palavra.upper() for palavra in esp._RESERVADA],
+
     # categorias resolvidas por consulta
     'EST_CLASSE', # estereotipo de classe: kind, role, phase...
     'EST_RELACAO', # estereotipo de relacao: componentOf, mediation...
-    'RESERVADA', # palavra reservada: package, import, genset...
+    'NATUREZA', # natureza ontologica: functional-complexes, relators...
     'TIPO_NATIVO', # tipo nativo: string, number, date...
     'META_ATRIBUTO', # meta-atributo: ordered, const, derived...
 
@@ -38,8 +41,8 @@ tokens = [
 
 # Naturezas ontológicas: as tres palavras da linguagem escritas com hifen.
 # Precisam de regra propria porque o hifen nao faz parte de nenhum padrao de nome.
-def t_RESERVADA(t):
-    r'functional-complexes|intrinsic-modes|extrinsic-modes'
+def t_NATUREZA(t):
+    r'functional-complexes|intrinsic-modes|extrinsic-modes|abstract-individuals'
     return t
 
 # Novo tipo de dado: inicia com letra, sem numeros nem separadores, e termina com a subcadeia DataType.

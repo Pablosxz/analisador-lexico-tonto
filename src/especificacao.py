@@ -19,7 +19,14 @@ _EST_RELACAO = """
 # Palavras reservadas
 _RESERVADA = """
     genset disjoint complete general specifics where package import
-    functional-complexes specializes of relation enum relators intrinsic-modes extrinsic-modes
+    specializes of relation enum datatype
+""".split()
+
+# Naturezas ontologicas (usadas depois de "of"). Todas tem o mesmo papel na
+# gramatica, por isso dividem um unico token: NATUREZA.
+_NATUREZA = """
+    objects functional-complexes collectives quantities relators intrinsic-modes
+    extrinsic-modes qualities events situations types abstract-individuals
 """.split()
 
 # Tipos de dado nativos
@@ -38,8 +45,11 @@ for _palavra in _EST_CLASSE:
     RESERVADAS[_palavra] = 'EST_CLASSE'
 for _palavra in _EST_RELACAO:
     RESERVADAS[_palavra] = 'EST_RELACAO'
+# Cada palavra reservada vira um token proprio: 'package' -> 'PACKAGE'.
 for _palavra in _RESERVADA:
-    RESERVADAS[_palavra] = 'RESERVADA'
+    RESERVADAS[_palavra] = _palavra.upper()
+for _palavra in _NATUREZA:
+    RESERVADAS[_palavra] = 'NATUREZA'
 for _palavra in _TIPO_NATIVO:
     RESERVADAS[_palavra] = 'TIPO_NATIVO'
 for _palavra in _META_ATRIBUTO:
