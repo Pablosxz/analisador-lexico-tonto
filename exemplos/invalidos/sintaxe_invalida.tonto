@@ -1,0 +1,15 @@
+// Erros de sintaxe. Esperados: linha 6 (falta :), linha 9 (falta o nome depois do
+// specializes da linha 8), linha 10 (falta virgula), linha 12 (falta general) e fim do arquivo (falta }).
+package Escola
+
+kind Pessoa {
+    nome string [1]
+}
+role Aluno specializes
+kind Animal
+enum Cor { Azul Verde }
+genset Papeis {
+    specifics Aluno, Professor
+}
+kind Turma {
+    codigo : string

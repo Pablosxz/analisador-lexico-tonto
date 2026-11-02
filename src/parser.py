@@ -52,7 +52,8 @@ def p_pacote(p):
         'nome': p[2],
         'linha': p.lineno(1),
         'imports': [e for e in elementos if e['construto'] == 'import'],
-        'declaracoes': [e for e in elementos if e['construto'] != 'import'],
+        # Declarações com erro de sintaxe ficam de fora (já estão no relatório).
+        'declaracoes': [e for e in elementos if e['construto'] not in ('import', 'erro')],
     }
 
 
@@ -73,6 +74,13 @@ def p_elemento(p):
                 | genset_decl
                 | relacao_externa'''
     p[0] = p[1]  # repassa o que já foi montado
+
+
+# Recuperação de erro (modo pânico): quando uma declaração tem erro, o PLY
+# descarta tokens até o começo da próxima declaração e continua dali.
+def p_elemento_com_erro(p):
+    'elemento : error'
+    p[0] = {'construto': 'erro'}
 
 
 # =============================================================================
@@ -346,12 +354,47 @@ def p_vazio(p):
 # ERRO SINTÁTICO
 # =============================================================================
 
+# Como cada token aparece na sugestão de correção.
+LEGIVEL = {
+    'NOME_CLASSE': 'um nome', 'NOME_RELACAO': 'um nome',
+    'NOME_INSTANCIA': 'um nome', 'NOVO_TIPO': 'um nome',
+    'EST_CLASSE': 'um estereótipo de classe (kind, role...)',
+    'EST_RELACAO': 'um estereótipo de relação', 'TIPO_NATIVO': 'um tipo (string, number...)',
+    'NATUREZA': 'uma natureza', 'META_ATRIBUTO': 'um meta-atributo', 'INTEIRO': 'um número',
+    'ABRE_CHAVE': "'{'", 'FECHA_CHAVE': "'}'", 'ABRE_COL': "'['", 'FECHA_COL': "']'",
+    'INTERVALO': "'..'", 'ASTERISCO': "'*'", 'ARROBA': "'@'", 'DOIS_PONTOS': "':'",
+    'VIRGULA': "','", 'CONECTOR': "'--'", 'AGREG_ESQ': "'<>--'", 'AGREG_DIR': "'--<>'",
+    'COMPOSICAO': "'<o>--'", '$end': 'o fim do arquivo',
+}
+
+
 def p_error(t):
+    # Tokens que a tabela do PLY aceitaria neste ponto. Palavras reservadas
+    # não estão no LEGIVEL e aparecem como são escritas: PACKAGE -> 'package'.
+    estado = parser.statestack[-1]
+    esperados = sorted({LEGIVEL.get(tipo, f"'{tipo.lower()}'")
+                        for tipo in parser.action[estado] if tipo != 'error'})
+
     if t is None:
-        ERROS_SINTATICOS.append({'linha': 'fim', 'mensagem': 'o arquivo terminou antes da hora'})
+        ERROS_SINTATICOS.append({
+            'linha': 'fim',
+            'mensagem': 'o arquivo terminou antes da hora',
+            'sugestao': "falta fechar uma '}'" if "'}'" in esperados else 'complete a última declaração',
+        })
+        return
+
+    if len(esperados) == 1:
+        sugestao = f"faltou {esperados[0]} antes de '{t.value}'"
+    elif len(esperados) <= 4:
+        sugestao = 'esperava ' + ', '.join(esperados[:-1]) + ' ou ' + esperados[-1]
     else:
-        ERROS_SINTATICOS.append({'linha': t.lineno,
-                                 'mensagem': f"'{t.value}' nao era esperado aqui"})
+        sugestao = f"confira a escrita desta linha perto de '{t.value}'"
+
+    ERROS_SINTATICOS.append({
+        'linha': t.lineno,
+        'mensagem': f"'{t.value}' nao era esperado aqui",
+        'sugestao': sugestao,
+    })
 
 
 # =============================================================================
@@ -363,5 +406,8 @@ parser = yacc.yacc(debug=True)
 
 def analisar(texto):
     # Cada arquivo usa um léxico novo, começando na linha 1.
-    return parser.parse(texto, lexer=lexer.construir(), tracking=True)
+    resultado = parser.parse(texto, lexer=lexer.construir(), tracking=True)
+    # Se o arquivo termina no meio de uma declaração, o PLY não se recupera e
+    # devolve None. O erro já foi registrado, então devolve uma lista vazia.
+    return resultado or []
 
