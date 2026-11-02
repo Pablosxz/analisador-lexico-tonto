@@ -39,40 +39,29 @@ tokens = [
 # Por isso utilizamos a ordem abaixo.
 # ---------------------------------------------------------------------------------
 
-# Naturezas ontológicas: as tres palavras da linguagem escritas com hifen.
-# Precisam de regra propria porque o hifen nao faz parte de nenhum padrao de nome.
-def t_NATUREZA(t):
-    r'functional-complexes|intrinsic-modes|extrinsic-modes|abstract-individuals'
-    return t
-
-# Novo tipo de dado: inicia com letra, sem numeros nem separadores, e termina com a subcadeia DataType.
-# O (?!...) no fim exige que NADA de nome venha depois do DataType.
-def t_NOVO_TIPO(t):
-    r'[A-Za-z]+DataType(?![A-Za-z0-9_-])'
-    return t
-
-# Nome de instancia: inicia com qualquer letra e termina em numero. Ex.: Planeta1, pizza03.
-# Antes de NOME_CLASSE e NOME_RELACAO: senao Planeta1 viraria Planeta + 1.
-def t_NOME_INSTANCIA(t):
-    r'[A-Za-z][A-Za-z]*([_-][A-Za-z]+)*[0-9]+'
-    return t
-
-
-# Nome de classe: inicia com maiuscula, sem numeros, com sublinhado ou hifen
-# entre letras. Ex.: Person, Second_Baptist_Church.
-def t_NOME_CLASSE(t):
-    r'[A-Z][A-Za-z]*([_-][A-Za-z]+)*_?'
-    return t
-
-
-# Nome de relacao: mesmo padrao, iniciando com minuscula. Ex.: hasParent, is_part_of.
-# Pega tambem as palavras da linguagem, que tem esta mesma forma (por isso a consulta).
+# Nomes e palavras da linguagem.
+# Uma regra só pega a palavra INTEIRA. Depois o Python decide a etiqueta olhando a lista de reservadas e o formato.
 def t_NOME_RELACAO(t):
-    r'[a-z][A-Za-z]*([_-][A-Za-z]+)*_?'
-
-    # As 64 palavras reservadas começam com minuscula, logo colidem só com este padrão.
-    t.type = esp.RESERVADAS.get(t.value, 'NOME_RELACAO')
+    r'[A-Za-z][A-Za-z0-9]*([_-][A-Za-z0-9]+)*_?'
+    t.type = classificar_nome(t.value)
     return t
+
+
+def classificar_nome(lexema):
+    # 1. Palavra da linguagem: kind, package, functional-complexes...
+    if lexema in esp.RESERVADAS:
+        return esp.RESERVADAS[lexema]
+    # 2. Novo tipo: so letras e termina com DataType. Ex.: CPFDataType
+    if lexema.endswith('DataType') and lexema.isalpha():
+        return 'NOVO_TIPO'
+    # 3. Instancia: termina em numero. Ex.: Planeta1, pizza03
+    if lexema[-1].isdigit():
+        return 'NOME_INSTANCIA'
+    # 4. Classe: comeca com maiuscula. Ex.: Person, Second_Baptist_Church
+    if lexema[0].isupper():
+        return 'NOME_CLASSE'
+    # 5. Relacao: comeca com minuscula. Ex.: hasParent, is_part_of
+    return 'NOME_RELACAO'
 
 
 # Inteiro: aparece apenas em cardinalidade. Ex.: o 1 e o 2 em [1..2].
