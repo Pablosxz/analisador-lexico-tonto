@@ -69,7 +69,9 @@ def p_elemento(p):
     '''elemento : importacao
                 | classe
                 | enum_decl
-                | datatype_decl'''
+                | datatype_decl
+                | genset_decl
+                | relacao_externa'''
     p[0] = p[1]  # repassa o que já foi montado
 
 
@@ -79,13 +81,15 @@ def p_elemento(p):
 
 def p_classe(p):
     'classe : EST_CLASSE nome natureza heranca corpo_classe'
+    membros = p[5]
     p[0] = {
         'construto': 'classe',
         'estereotipo': p[1], # kind, role, phase...
         'nome': p[2],
         'linha': p.lineno(1),
         'pais': p[4], # classes que ela especializa
-        'atributos': p[5],
+        'atributos': [m for m in membros if m['construto'] == 'atributo'],
+        'relacoes': [m for m in membros if m['construto'] == 'relacao'], # relações internas
     }
 
 
@@ -127,7 +131,8 @@ def p_membros(p):
 
 
 def p_membro(p):
-    'membro : atributo'
+    '''membro : atributo
+              | relacao_interna'''
     p[0] = p[1]
 
 
@@ -225,6 +230,99 @@ def p_atributos(p):
     '''atributos : atributos atributo
                  | vazio'''
     p[0] = p[1] + [p[2]] if len(p) == 3 else []
+
+
+# =============================================================================
+# 6. GENSETS
+# =============================================================================
+
+# Forma com chaves: disjoint complete genset Nome { general A specifics B, C }
+def p_genset_completo(p):
+    'genset_decl : restricoes GENSET nome ABRE_CHAVE GENERAL nome SPECIFICS lista_nomes FECHA_CHAVE'
+    p[0] = montar_genset(p[1], p[3], p[6], p[8], p.lineno(2))
+
+
+# Forma curta: disjoint complete genset Nome where B, C specializes A
+def p_genset_curto(p):
+    'genset_decl : restricoes GENSET nome WHERE lista_nomes SPECIALIZES nome'
+    p[0] = montar_genset(p[1], p[3], p[7], p[5], p.lineno(2))
+
+
+def montar_genset(restricoes, nome, geral, especificos, linha):
+    return {
+        'construto': 'genset',
+        'nome': nome,
+        'linha': linha,
+        'disjoint': 'disjoint' in restricoes,
+        'complete': 'complete' in restricoes,
+        'geral': geral,
+        'especificos': especificos,
+    }
+
+
+def p_restricoes(p):
+    '''restricoes : DISJOINT COMPLETE
+                  | DISJOINT
+                  | COMPLETE
+                  | vazio'''
+    p[0] = [x for x in p[1:] if x] # ex.: ['disjoint', 'complete']
+
+
+# =============================================================================
+# 7. RELAÇÕES
+# =============================================================================
+# Interna: fica dentro da classe, que é a origem.
+# Externa: fica solta no pacote e diz a origem depois de "relation".
+
+def p_relacao_externa(p):
+    'relacao_externa : estereotipo_rel RELATION nome dados_relacao'
+    p[0] = dict(p[4], estereotipo=p[1], origem=p[3], linha=p.lineno(2))
+
+
+def p_relacao_interna(p):
+    'relacao_interna : estereotipo_rel dados_relacao'
+    p[0] = dict(p[2], estereotipo=p[1], linha=p.lineno(2))
+
+
+def p_estereotipo_rel(p):
+    '''estereotipo_rel : ARROBA EST_RELACAO
+                       | vazio'''
+    p[0] = p[2] if len(p) == 3 else None
+
+
+# Ex.: [1] <>-- tem -- [1..*] Departamento
+def p_dados_relacao(p):
+    'dados_relacao : cardinalidade_opc ligacao cardinalidade nome'
+    p[0] = {
+        'construto': 'relacao',
+        'card_origem': p[1],
+        'nome': p[2], # nome da relação, ou None
+        'card_destino': p[3],
+        'destino': p[4],
+    }
+
+
+def p_ligacao_sem_nome(p):
+    'ligacao : tipo_ligacao'
+    p[0] = None
+
+
+# As formas com nome ficam por extenso para evitar um conflito shift/reduce:
+# assim o PLY só decide o tipo da ligação depois de ver o nome.
+def p_ligacao_com_nome(p):
+    '''ligacao : CONECTOR nome CONECTOR
+               | AGREG_ESQ nome CONECTOR
+               | COMPOSICAO nome CONECTOR
+               | CONECTOR nome AGREG_DIR'''
+    p[0] = p[2]
+
+
+# O tipo da ligação (--, <>--, --<>, <o>--) não é usado nas saídas.
+def p_tipo_ligacao(p):
+    '''tipo_ligacao : CONECTOR
+                    | AGREG_ESQ
+                    | AGREG_DIR
+                    | COMPOSICAO'''
 
 
 # =============================================================================
