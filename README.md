@@ -12,43 +12,44 @@ símbolos completa é ainda gravada em JSON, para uso por outra ferramenta.
 
 ## Sumário
 
-* [Objetivos](#objetivos)
-* [Tecnologias utilizadas](#tecnologias-utilizadas)
-* [Tutorial de execução](#tutorial-de-execução)
-  * [Instalação das dependências](#instalação-das-dependências)
-  * [Execução](#execução)
-* [Estrutura do projeto](#estrutura-do-projeto)
-* [Análise léxica](#análise-léxica)
-  * [Tokens reconhecidos](#tokens-reconhecidos)
-  * [Convenções de nomes](#convenções-de-nomes)
-  * [Visão analítica](#visão-analítica)
-  * [Tabela de síntese](#tabela-de-síntese)
-  * [Tabela de símbolos em JSON](#tabela-de-símbolos-em-json)
-  * [Tratamento de erros léxicos](#tratamento-de-erros-léxicos)
-* [Análise sintática](#análise-sintática)
-  * [Construções reconhecidas](#construções-reconhecidas)
-  * [Decisões de projeto](#decisões-de-projeto)
-  * [Conflito shift/reduce](#conflito-shiftreduce)
-  * [Tratamento de erros sintáticos](#tratamento-de-erros-sintáticos)
-* [Sobre a implementação](#sobre-a-implementação)
-  * [De expressão regular a analisador](#de-expressão-regular-a-analisador)
-  * [Ordem das regras](#ordem-das-regras)
-  * [Por que uma regra só para nomes](#por-que-uma-regra-só-para-nomes)
-* [Autores](#autores)
-* [Referências](#referências)
+- [Objetivos](#objetivos)
+- [Tecnologias utilizadas](#tecnologias-utilizadas)
+- [Tutorial de execução](#tutorial-de-execução)
+  - [Instalação das dependências](#instalação-das-dependências)
+  - [Execução](#execução)
+- [Estrutura do projeto](#estrutura-do-projeto)
+- [Análise léxica](#análise-léxica)
+  - [Tokens reconhecidos](#tokens-reconhecidos)
+  - [Convenções de nomes](#convenções-de-nomes)
+  - [Visão analítica](#visão-analítica)
+  - [Tabela de síntese](#tabela-de-síntese)
+  - [Tabela de símbolos em JSON](#tabela-de-símbolos-em-json)
+  - [Tratamento de erros léxicos](#tratamento-de-erros-léxicos)
+- [Análise sintática](#análise-sintática)
+  - [Construções reconhecidas](#construções-reconhecidas)
+  - [Decisões de projeto](#decisões-de-projeto)
+  - [Conflito shift/reduce](#conflito-shiftreduce)
+  - [Tratamento de erros sintáticos](#tratamento-de-erros-sintáticos)
+- [Sobre a implementação](#sobre-a-implementação)
+  - [De expressão regular a analisador](#de-expressão-regular-a-analisador)
+  - [Ordem das regras](#ordem-das-regras)
+  - [Por que uma regra só para nomes](#por-que-uma-regra-só-para-nomes)
+  - [Implementação da tabela de símbolos](#implementação-da-tabela-de-símbolos)
+- [Autores](#autores)
+- [Referências](#referências)
 
 ## Objetivos
 
 O projeto tem como objetivo dar suporte à análise de corretude de uma ontologia
 especificada textualmente com a linguagem TONTO, reconhecendo:
 
-* estereótipos de classe, como `kind`, `role`, `phase` e `category`;
-* estereótipos de relação, como `componentOf`, `mediation` e `material`;
-* palavras reservadas da linguagem, como `package`, `import` e `genset`;
-* símbolos especiais, incluindo os operadores de relação `<>--`, `--<>` e `<o>--`;
-* nomes de classe, de relação e de instância, segundo as convenções da linguagem;
-* tipos de dados nativos e novos tipos definidos pelo usuário;
-* meta-atributos, como `ordered`, `const` e `derived`.
+- estereótipos de classe, como `kind`, `role`, `phase` e `category`;
+- estereótipos de relação, como `componentOf`, `mediation` e `material`;
+- palavras reservadas da linguagem, como `package`, `import` e `genset`;
+- símbolos especiais, incluindo os operadores de relação `<>--`, `--<>` e `<o>--`;
+- nomes de classe, de relação e de instância, segundo as convenções da linguagem;
+- tipos de dados nativos e novos tipos definidos pelo usuário;
+- meta-atributos, como `ordered`, `const` e `derived`.
 
 ## Tecnologias utilizadas
 
@@ -290,7 +291,7 @@ saídas.
 | Pacote e importação | `import Pessoa` e `package Hospital` |
 | Classe | `role Medico specializes Pessoa { especialidade : Especialidade }` |
 | Classe enumerada | `enum Especialidade { Pediatra01, Dentista02 }` |
-| Tipo de dado complexo | `datatype Telefone { ddd : number  numero : string }` |
+| Tipo de dado complexo | `datatype Telefone { ddd : number numero : string }` |
 | Relação interna (dentro da classe) | `@mediation [1..*] -- [1] Paciente` |
 | Relação externa | `@material relation Paciente [1..*] -- consulta -- [1..*] Medico` |
 | Conjunto de generalização | `disjoint complete genset Fases { general Pessoa specifics Crianca, Adulto }` |
@@ -298,7 +299,7 @@ saídas.
 <details>
 <summary>Gramática completa</summary>
 
-```
+```text
 ontologia         → lista_imports PACKAGE nome conteudo
 lista_imports     → lista_imports importacao | vazio
 importacao        → IMPORT nome
@@ -350,13 +351,13 @@ nome              → NOME_CLASSE | NOME_RELACAO | NOME_INSTANCIA | NOVO_TIPO
 
 ### Decisões de projeto
 
-* **Um pacote por arquivo.** Cada arquivo tem os imports seguidos de um `package`,
+- **Um pacote por arquivo.** Cada arquivo tem os imports seguidos de um `package`,
   como em todos os exemplos do professor. Uma ontologia com vários pacotes é
   dividida em vários arquivos, analisados juntos.
-* **Qualquer nome onde a gramática espera um nome.** Os exemplos do professor nem
+- **Qualquer nome onde a gramática espera um nome.** Os exemplos do professor nem
   sempre seguem as convenções (a classe `ClassName1`, por exemplo, termina em
   número), então os quatro tipos de nome são aceitos.
-* **Reconhecer sem guardar.** Naturezas, cardinalidades, meta-atributos,
+- **Reconhecer sem guardar.** Naturezas, cardinalidades, meta-atributos,
   estereótipos e tipos de ligação das relações, restrições do genset e valores de
   enums são reconhecidos para que o arquivo seja aceito, mas não são guardados,
   porque as saídas não os utilizam.
@@ -431,6 +432,32 @@ dividido em `Criterion_A1` (instância) e `a` (relação), e o analisador sintá
 recebia dois nomes seguidos. Reconhecendo a palavra inteira primeiro e decidindo a
 categoria depois, como já era feito com as palavras reservadas, nenhum nome é
 cortado.
+
+### Implementação da tabela de símbolos
+
+Atendendo aos requisitos do projeto, a tabela de símbolos foi implementada utilizando uma **Tabela de Dispersão (Hash Table)** por meio do uso de dicionários nativos (`dict`) da linguagem Python. Essa escolha arquitetural garante um desempenho de tempo médio constante $O(1)$ para inserções e buscas, essencial para a eficiência do analisador léxico e sintático.
+
+**Detalhamento Estrutural:**
+- **Estrutura de Dados:** Tabela Hash baseada em array com tratamento de colisões por endereçamento aberto (*open addressing*), nativo da implementação CPython.
+- **Chave (Key):** O `lexema` (string pura encontrada no código-fonte).
+- **Valor (Value):** Um objeto aninhado contendo os metadados do símbolo:
+  - `categoria`: O tipo do token associado (ex: `NOME_CLASSE`, `EST_CLASSE`).
+  - `ocorrencias`: Uma lista de tuplas `(linha, coluna)` mapeando todas as aparições do símbolo no arquivo.
+
+**Fluxo de Execução:** 
+O gerenciamento da tabela ocorre de forma dinâmica através da função `registrar(lexema, categoria, linha, coluna)`. Durante a varredura, ao reconhecer um token válido cujas categorias pertençam à Tabela de Síntese, o analisador léxico invoca o registo. O sistema calcula o *hash* do lexema e verifica a sua presença na tabela:
+1. **Símbolo Inédito:** A chave é alocada na tabela de dispersão e inicializada com a categoria estrutural e a sua primeira ocorrência.
+2. **Símbolo Existente:** O sistema recupera a chave existente e apenas anexa a nova coordenada `(linha, coluna)` à lista de ocorrências, evitando redundância na memória.
+
+**Trecho de implementação base:**
+```python
+SIMBOLOS = {} # Inicialização da Tabela de Dispersão
+
+def registrar(lexema, categoria, linha, coluna):
+    # Uso do setdefault implementa o lookup O(1) e inserção atômica na Hash Table
+    entrada = SIMBOLOS.setdefault(lexema, {'categoria': categoria, 'ocorrencias': []})
+    entrada['ocorrencias'].append((linha, coluna))
+```
 
 ## Autores
 
