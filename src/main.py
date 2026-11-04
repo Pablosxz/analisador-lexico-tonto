@@ -53,20 +53,17 @@ def main():
     # 2. Executa a Análise Sintática (constrói a árvore e captura erros de sintaxe)
     arvore_ontologia = parser.analisar(entrada)
     
-    # 3. Relatórios Léxicos (Os que você já tinha nota 10)
+    # 3. Relatórios Léxicos
     relatorio.mostrar_visao_analitica(tokens)
     print()
     relatorio.mostrar_tabela_sintese()
     print()
     
-    # 4. Relatórios Sintáticos (Os novos relatórios da 2ª unidade)
+    # 4. Relatórios Sintáticos
     if arvore_ontologia:
         relatorio.mostrar_sintese_sintatica(arvore_ontologia)
         print()
     relatorio.mostrar_erros_sintaticos(parser.ERROS_SINTATICOS)
-
-    # 5. Exportação da Tabela (Opcional, se ainda for exigência do professor)
-    # exportar_tabela(ARQUIVO_SAIDA)
 
     # Verifica se houve falha em qualquer uma das fases
     houve_erro_lexico = len(erros.ERROS) > 0
