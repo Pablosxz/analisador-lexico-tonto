@@ -7,7 +7,7 @@ from especificacao import CATEGORIAS
 
 
 def mostrar_visao_analitica(tokens):
-    print('VISAO ANALITICA')
+    print('VISAO ANALITICA LÉXICA')
     print(f"{'LINHA':>6} {'COL':>5}  {'TOKEN':<16} LEXEMA")
     for linha, coluna, tipo, lexema in tokens:
         print(f"{linha:>6} {coluna:>5}  {tipo:<16} {lexema}")
