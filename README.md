@@ -280,15 +280,14 @@ Havendo ao menos um erro léxico, o programa encerra com código de saída `1`.
 O analisador sintático (`src/parser.py`) é gerado pelo módulo `yacc` do PLY, que
 constrói um analisador ascendente LALR(1), o mesmo método do Bison. Cada regra da
 gramática é uma função `p_...`: a regra fica na docstring e o corpo é executado
-quando o PLY reduz aquela regra. O resultado da análise de um arquivo é um
-dicionário com o pacote e suas declarações, usado pela tabela de símbolos e pelas
-saídas.
+quando o PLY reduz aquela regra. O resultado da análise de um arquivo é uma lista
+com os pacotes e as declarações de cada um, usada pelas saídas.
 
 ### Construções reconhecidas
 
 | Construção | Exemplo |
 | --- | --- |
-| Pacote e importação | `import Pessoa` e `package Hospital` |
+| Pacotes e importação | `import Pessoa` e `package Hospital` (um ou mais por arquivo) |
 | Classe | `role Medico specializes Pessoa { especialidade : Especialidade }` |
 | Classe enumerada | `enum Especialidade { Pediatra01, Dentista02 }` |
 | Tipo de dado complexo | `datatype Telefone { ddd : number numero : string }` |
@@ -300,7 +299,8 @@ saídas.
 <summary>Gramática completa</summary>
 
 ```text
-ontologia         → lista_imports PACKAGE nome conteudo
+ontologia         → ontologia pacote | pacote
+pacote            → lista_imports PACKAGE nome conteudo
 lista_imports     → lista_imports importacao | vazio
 importacao        → IMPORT nome
 conteudo          → conteudo elemento | vazio
@@ -351,9 +351,10 @@ nome              → NOME_CLASSE | NOME_RELACAO | NOME_INSTANCIA | NOVO_TIPO
 
 ### Decisões de projeto
 
-- **Um pacote por arquivo.** Cada arquivo tem os imports seguidos de um `package`,
-  como em todos os exemplos do professor. Uma ontologia com vários pacotes é
-  dividida em vários arquivos, analisados juntos.
+- **Vários pacotes no mesmo arquivo.** Cada pacote tem os seus `import` antes do
+  `package`, e um arquivo pode ter um ou mais pacotes. Assim, uma ontologia com
+  pacotes que se importam pode ser analisada de uma vez, e a tabela de síntese
+  mostra quantos e quais pacotes existem e o que cada um importa.
 - **Qualquer nome onde a gramática espera um nome.** Os exemplos do professor nem
   sempre seguem as convenções (a classe `ClassName1`, por exemplo, termina em
   número), então os quatro tipos de nome são aceitos.

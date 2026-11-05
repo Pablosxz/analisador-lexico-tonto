@@ -9,13 +9,19 @@ ERROS_SINTATICOS = []
 
 
 # =============================================================================
-# 1. PACOTE E IMPORTS
+# 1. PACOTES E IMPORTS
 # =============================================================================
-# A primeira regra é o símbolo inicial: o arquivo inteiro, com um pacote.
-# Ontologias com vários pacotes ficam em vários arquivos.
+# A primeira regra é o símbolo inicial: o arquivo inteiro, com um ou mais pacotes.
 
 def p_ontologia(p):
-    'ontologia : lista_imports PACKAGE nome conteudo'
+    '''ontologia : ontologia pacote
+                 | pacote'''
+    p[0] = p[1] + [p[2]] if len(p) == 3 else [p[1]]
+
+
+# Cada pacote vem com os seus imports antes do package.
+def p_pacote(p):
+    'pacote : lista_imports PACKAGE nome conteudo'
     p[0] = {
         'nome': p[3],
         'linha': p.lineno(2),
@@ -365,7 +371,7 @@ parser = yacc.yacc(debug=True)
 
 
 def analisar(texto):
-    # Devolve o pacote do arquivo, ou None se um erro impediu a análise
+    # Devolve a lista de pacotes do arquivo, ou None se um erro impediu a análise
     # (por exemplo, o arquivo termina no meio de uma declaração).
     # Cada arquivo usa um léxico novo, começando na linha 1.
     return parser.parse(texto, lexer=lexer.construir(), tracking=True)

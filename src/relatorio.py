@@ -16,12 +16,12 @@ def mostrar_visao_analitica(tokens):
 # RELATÓRIO DA ANÁLISE SINTÁTICA
 # =============================================================================
 
-def mostrar_sintese_sintatica(ontologia):
+def mostrar_sintese_sintatica(pacotes):
     """
     Exibe a tabela de síntese estrutural exigida nos requisitos do sintático.
-    Lê o dicionário (AST) gerado pelo parser.py.
+    Lê a lista de pacotes gerada pelo parser.py.
     """
-    if not ontologia:
+    if not pacotes:
         print("\n[!] Nenhuma ontologia válida para resumir devido a erros críticos de sintaxe.")
         return
 
@@ -29,14 +29,24 @@ def mostrar_sintese_sintatica(ontologia):
     print(" " * 15 + "RESUMO DA ONTOLOGIA (SÍNTESE SINTÁTICA)")
     print("=" * 70)
 
-    # 1. Pacotes
-    nome_pacote = ontologia.get('nome', 'Sem_Nome')
-    # Como o arquivo representa 1 pacote raiz, contamos como 1.
-    print(f"\nPACOTES ENCONTRADOS: 1")
-    print(f"  - Pacote: {nome_pacote}")
-    print("-" * 70)
+    # 1. Pacotes e o que cada um importa
+    print(f"\nPACOTES ENCONTRADOS: {len(pacotes)}")
+    for pacote in pacotes:
+        importa = ', '.join(i['nome'] for i in pacote.get('imports', [])) or 'nenhum'
+        print(f"  - Pacote: {pacote.get('nome', 'Sem_Nome')} (importa: {importa})")
 
-    declaracoes = ontologia.get('declaracoes', [])
+    for pacote in pacotes:
+        mostrar_pacote(pacote)
+
+    print("=" * 70)
+
+
+def mostrar_pacote(pacote):
+    nome_pacote = pacote.get('nome', 'Sem_Nome')
+    print("-" * 70)
+    print(f"PACOTE {nome_pacote}")
+
+    declaracoes = pacote.get('declaracoes', [])
     
     # Filtrando as declarações por tipo de construto
     classes = [d for d in declaracoes if d.get('construto') == 'classe']
@@ -82,8 +92,6 @@ def mostrar_sintese_sintatica(ontologia):
         print(f"  - [datatype] {d.get('nome')}")
     for g in gensets:
         print(f"  - [genset] {g.get('nome')}")
-        
-    print("=" * 70)
 
 
 def mostrar_erros_sintaticos(erros_lista):
