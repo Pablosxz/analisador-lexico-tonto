@@ -1,0 +1,11 @@
+package Pessoas
+
+kind Pessoa
+phase Crianca specializes Pessoa
+phase Adulto specializes Pessoa
+
+import Pessoas
+package Hospital
+
+role Paciente specializes Pessoa
+role Medico specializes Pessoa
